@@ -1,54 +1,33 @@
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from base64 import urlsafe_b64encode, urlsafe_b64decode
-import os
+from crypto_utils import hash_password, verify_password, setup_master_password, check_master_password, derive_key, encrypt_password
+from excel_utils import add_password_to_excel
 
+def main():
+    # Attempt to check the master password or set a new one if it doesn't exist
+    master_password, is_new_setup = check_master_password()
+    if not master_password:
+        print("Exiting the application.")
+        return
 
-# Function to create a salt and hash a password
-def hash_password(password):
-    salt = os.urandom(16)
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-        backend=default_backend()
-    )
-    key = kdf.derive(password.encode())  # Derive the key
-    storage = urlsafe_b64encode(salt + key).decode()  # Store salt and key together
-    return storage
+    # For a new setup, no need to verify again
+    if not is_new_setup:
+        attempt_password = input("Enter your master password to unlock: ")
+        with open("master_password.txt", "r") as file:
+            stored_hash = file.read()
+        if not verify_password(stored_hash, attempt_password):
+            print("Access denied.")
+            return
 
+    print("Access granted.")
+    key = derive_key(master_password)
 
-# Function to verify a provided password against a stored hash
-def verify_password(stored_password, provided_password):
-    decoded = urlsafe_b64decode(stored_password.encode())
-    salt = decoded[:16]  # Extract salt
-    key = decoded[16:]  # Extract key
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-        backend=default_backend()
-    )
+    # Main application logic for storing new passwords
+    site = input("Enter the site name: ")
+    username = input("Enter the username: ")
+    user_password = input("Enter the password: ")
 
-    try:
-        kdf.verify(provided_password.encode(), key)
-        return True  # Password match
-    except Exception:
-        return False  # Password does not match
+    encrypted_password = encrypt_password(user_password, key)
+    add_password_to_excel(site, username, encrypted_password)
+    print("Password added successfully.")
 
-
-# Main Program
 if __name__ == "__main__":
-    master_password = input("Set your master password: ")
-    hashed_master_password = hash_password(master_password)
-    print("Master password set and securely stored.")
-
-    # For demonstration, let's verify the master password
-    attempt_password = input("Enter your master password to unlock: ")
-    if verify_password(hashed_master_password, attempt_password):
-        print("Access granted.")
-    else:
-        print("Access denied.")
+    main()
