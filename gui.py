@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import customtkinter as ctk
 from ttkthemes import ThemedTk
 from crypto_utils import derive_key, encrypt_password, decrypt_password
@@ -130,9 +130,24 @@ class PasswordManagerGUI:
         for i, (site, username, decrypted_password, notes) in enumerate(passwords, start=row_offset + 1):
             tk.Label(window, text=site, bg='#333333', fg='white').grid(row=i, column=0, padx=10, pady=5, sticky='w')
             tk.Label(window, text=username, bg='#333333', fg='white').grid(row=i, column=1, padx=10, pady=5, sticky='w')
-            tk.Label(window, text=decrypted_password, bg='#333333', fg='white').grid(row=i, column=2, padx=10, pady=5,
-                                                                                     sticky='w')
+            tk.Label(window, text=decrypted_password, bg='#333333', fg='white').grid(row=i, column=2, padx=10, pady=5, sticky='w')
             tk.Label(window, text=notes, bg='#333333', fg='white').grid(row=i, column=3, padx=10, pady=5, sticky='w')
+
+            delete_button = tk.Button(window, text="X", command=lambda row=i: self.confirm_delete(sheet, window, row))
+            delete_button.grid(row=i, column=4, padx=10, pady=5, sticky='w')
+
+    def confirm_delete(self, sheet, window, row):
+        confirm = tk.messagebox.askyesno("Confirm Deleting", "This will delete the credentials, proceed?")
+        if confirm:
+            # Delete the row from the sheet
+            sheet.delete_rows(row)
+
+            # Save the workbook
+            sheet.parent.save("passwords.xlsx")
+
+            # Refresh the displayed passwords
+            self.fill_passwords(sheet, window)
+
 
 
     def apply_sort(self, sheet, window, sort_by, sort_order):
