@@ -1,24 +1,32 @@
-from crypto_utils import (hash_password, verify_password, setup_master_password, check_master_password, derive_key, encrypt_password)
-from excel_utils import add_password_to_excel
 from gui import PasswordManagerGUI, LoginWindow
 from crypto_utils import check_master_password
-from ttkthemes import ThemedTk
-
-
+import customtkinter as ctk
 
 def on_login(master_password, root):
     verified, _ = check_master_password(master_password)
     if verified:
+        # Assuming PasswordManagerGUI is adapted to customtkinter and requires a master password
         app = PasswordManagerGUI(root, master_password)
-        app.root.deiconify()  # If the main window was hidden, show it.
+        root.deiconify()  # If the main window was hidden, show it.
     else:
-        print("Access denied. Please try again.")
+        ctk.CTkMessageBox.show_error("Login Failed", "Access denied. Please try again.")
+        # Consider also resetting the login form or closing the program based on your design.
 
 def main():
-    root = ThemedTk(theme="equilux")
+    # Set the appearance mode for customtkinter globally, if desired
+    ctk.set_appearance_mode("dark")  # 'light' is also available
+    ctk.set_default_color_theme("dark-blue")  # You can choose a theme that matches your design
+
+    root = ctk.CTk()  # Using customtkinter's CTk instead of ThemedTk
+    root.title("Password Manager by Aplik")
+    root.geometry("600x300")  # Adjust the size as needed
     root.withdraw()  # Hide the main window until login is successful
-    login_window = LoginWindow(root, lambda mp: on_login(mp, root))  # Pass root as an argument to on_login
+
+    # Pass root as an argument to on_login, ensure LoginWindow is using customtkinter if you've modified it
+    login_window = LoginWindow(root, lambda mp: on_login(mp, root))
+
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()

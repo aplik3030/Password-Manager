@@ -7,31 +7,40 @@ from excel_utils import add_password_to_excel
 from openpyxl import load_workbook
 import pyotp
 import qrcode
+import os
+from PIL import Image, ImageTk
 
 
 class LoginWindow:
     def __init__(self, parent, login_function):
-        self.top = tk.Toplevel(parent)
-        self.top.title("Password Manager")
+        self.top = ctk.CTkToplevel(parent)
+        self.top.title("Login")
         self.login_function = login_function
-        ctk.set_appearance_mode("dark")
-        self.top.configure(bg='#333333')
-        self.style = ttk.Style()
-        self.style.theme_use('equilux')
 
-        ctk_label = ctk.CTkLabel(self.top, text="Password Manager by Aplik:")
-        ctk_label.grid(row=0, column=0, padx=10, pady=10)
-        self.password_entry = ttk.Entry(self.top, show="*")
-        self.password_entry.grid(row=1, column=0, padx=10, pady=10)
-        self.password_entry.focus()
+        BG_IMAGE_PATH = 'bg.jpg'  # Make sure this path is correct
+        bg_image = Image.open(BG_IMAGE_PATH)
+        bg_photo = ImageTk.PhotoImage(bg_image)
 
-        login_button = ttk.Button(self.top, text="Login", command=self.on_login)
-        login_button.grid(row=2, column=0, columnspan=2, pady=10)
+        # Create a label to display the image, covering the entire window
+        bg_label = tk.Label(self.top, image=bg_photo)
+        bg_label.image = bg_photo  # Keep a reference
+        bg_label.place(relwidth=1, relheight=1)
+
+        # Continue with your widgets setup...
+        self.password_entry = ctk.CTkEntry(self.top, placeholder_text="Enter Master Password", show="*")
+        self.password_entry.grid(row=1, column=0, padx=20, pady=10)
+
+        login_button = ctk.CTkButton(self.top, text="Login", command=self.on_login)
+        login_button.grid(row=2, column=0, padx=20, pady=10)
 
     def on_login(self):
         master_password = self.password_entry.get()
-        self.login_function(master_password)
-        self.top.destroy()
+        if self.login_function(master_password):
+            self.top.destroy()
+        else:
+            messagebox.showerror("Login Failed", "The provided master password is incorrect.")
+
+
 
 
 class PasswordManagerGUI:
@@ -43,7 +52,6 @@ class PasswordManagerGUI:
         self.root.title("Password Manager by Aplik v1.0")
         self.root.configure(bg='#333333')  # Example hex color for dark theme
         self.style = ttk.Style()
-        self.style.theme_use('equilux')
         self.style.configure("TLabel", background="#333333", foreground="white")  # Example configuration
         self.create_widgets()
 
