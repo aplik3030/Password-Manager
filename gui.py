@@ -13,33 +13,49 @@ from PIL import Image, ImageTk
 
 class LoginWindow:
     def __init__(self, parent, login_function):
-        self.top = ctk.CTkToplevel(parent)
-        self.top.title("Login")
+        self.parent = parent
         self.login_function = login_function
+        self.setup_window()
 
-        BG_IMAGE_PATH = 'bg.jpg'  # Make sure this path is correct
+    def setup_window(self):
+        self.top = ctk.CTkToplevel(self.parent)
+        self.top.geometry("535x396")  # Adjust the window size to fit the entire application
+        self.top.title("Login Page")
+
+        # Load background image
+        BG_IMAGE_PATH = 'bck.jpg'  # Make sure the path is correct relative to where your script is run
         bg_image = Image.open(BG_IMAGE_PATH)
         bg_photo = ImageTk.PhotoImage(bg_image)
 
-        # Create a label to display the image, covering the entire window
+        # Create a label for the background image and place it on the left side
         bg_label = tk.Label(self.top, image=bg_photo)
-        bg_label.image = bg_photo  # Keep a reference
-        bg_label.place(relwidth=1, relheight=1)
+        bg_label.image = bg_photo  # Keep a reference to prevent garbage collection
+        bg_label.place(x=0, y=0, width=350, height=396)
 
-        # Continue with your widgets setup...
-        self.password_entry = ctk.CTkEntry(self.top, placeholder_text="Enter Master Password", show="*")
-        self.password_entry.grid(row=1, column=0, padx=20, pady=10)
 
-        login_button = ctk.CTkButton(self.top, text="Login", command=self.on_login)
-        login_button.grid(row=2, column=0, padx=20, pady=10)
+        # Adjust the position of the login frame to the right
+        login_frame_width = self.top.winfo_width() - 350  # Remaining width after the bg image
+        login_frame_height = self.top.winfo_height()  # Full height
+        login_frame = ctk.CTkFrame(self.top, width=login_frame_width, height=login_frame_height)
+        login_frame.place(x=350, y=0)  # Place it right after the image
 
-    def on_login(self):
-        master_password = self.password_entry.get()
+        # Welcome label
+        welcome_label = ctk.CTkLabel(login_frame, text="Welcome Back!")  # Removed text_font parameter
+        welcome_label.pack(pady=12)
+
+        # Password Entry
+        password_entry = ctk.CTkEntry(login_frame, placeholder_text="Password:", show="*")
+        password_entry.pack(pady=10, padx=20, fill='x')
+
+        # Login button
+        login_button = ctk.CTkButton(login_frame, text="Login", command=lambda: self.on_login(password_entry.get()))
+        login_button.pack(pady=20)
+
+    def on_login(self, master_password):
         if self.login_function(master_password):
             self.top.destroy()
         else:
-            messagebox.showerror("Login Failed", "The provided master password is incorrect.")
-
+            ctk.CTkMessageBox.show_error("Login Failed", "The provided master password is incorrect.")
 
 
 
