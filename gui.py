@@ -19,28 +19,25 @@ class LoginWindow:
 
     def setup_window(self):
         self.top = ctk.CTkToplevel(self.parent)
-        self.top.geometry("535x396")  # Adjust the window size to fit the entire application
+        self.top.geometry("600x400")
         self.top.title("Login Page")
+        self.top.resizable(False, False)
 
-        # Load background image
-        BG_IMAGE_PATH = 'bck.jpg'  # Make sure the path is correct relative to where your script is run
-        bg_image = Image.open(BG_IMAGE_PATH)
+        bG_IMAGE_PATH = 'sad.jpg'
+        bg_image = Image.open(bG_IMAGE_PATH)
         bg_photo = ImageTk.PhotoImage(bg_image)
 
-        # Create a label for the background image and place it on the left side
         bg_label = tk.Label(self.top, image=bg_photo)
-        bg_label.image = bg_photo  # Keep a reference to prevent garbage collection
-        bg_label.place(x=0, y=0, width=350, height=396)
+        bg_label.image = bg_photo
+        bg_label.place(x=0, y=0, width=600, height=400)
 
-
-        # Adjust the position of the login frame to the right
-        login_frame_width = self.top.winfo_width() - 350  # Remaining width after the bg image
-        login_frame_height = self.top.winfo_height()  # Full height
+        login_frame_width = self.top.winfo_width()
+        login_frame_height = self.top.winfo_height()
         login_frame = ctk.CTkFrame(self.top, width=login_frame_width, height=login_frame_height)
-        login_frame.place(x=350, y=0)  # Place it right after the image
+        login_frame.place(x=200, y=100)
 
         # Welcome label
-        welcome_label = ctk.CTkLabel(login_frame, text="Welcome Back!")  # Removed text_font parameter
+        welcome_label = ctk.CTkLabel(login_frame, text="Welcome Back!")
         welcome_label.pack(pady=12)
 
         # Password Entry
@@ -52,11 +49,11 @@ class LoginWindow:
         login_button.pack(pady=20)
 
     def on_login(self, master_password):
-        if self.login_function(master_password):
+        login_success = self.login_function(master_password)
+        if login_success:
             self.top.destroy()
         else:
-            ctk.CTkMessageBox.show_error("Login Failed", "The provided master password is incorrect.")
-
+            messagebox.showerror("Login Failed", "The provided master password is incorrect.")
 
 
 class PasswordManagerGUI:
@@ -64,11 +61,9 @@ class PasswordManagerGUI:
         self.root = root
         self.master_password = master_password
         self.key = derive_key(master_password)
-        ctk.set_appearance_mode("dark")
+        ctk.set_appearance_mode("light")
         self.root.title("Password Manager by Aplik v1.0")
-        self.root.configure(bg='#333333')  # Example hex color for dark theme
         self.style = ttk.Style()
-        self.style.configure("TLabel", background="#333333", foreground="white")  # Example configuration
         self.create_widgets()
 
     def create_widgets(self):
@@ -89,8 +84,6 @@ class PasswordManagerGUI:
 
         self.root.grid_columnconfigure(1, weight=1)
 
-
-
     def add_password(self):
         site, username, password, notes = (entry.get() for entry in self.entries)
         encrypted_password, salt = encrypt_password(password,
@@ -108,7 +101,6 @@ class PasswordManagerGUI:
 
         new_window = tk.Toplevel(self.root)
         new_window.title("View Stored Passwords")
-        new_window.configure(bg='#333333')
 
         # Sorting controls inside new_window
         sort_order = ttk.Combobox(new_window, values=["Ascending", "Descending"], state="readonly")
@@ -123,15 +115,13 @@ class PasswordManagerGUI:
         self.fill_passwords(sheet, new_window)
 
     def fill_passwords(self, sheet, window, sort_by=None, sort_order='ascending'):
-        # Clear the existing entries in the window
         for widget in window.grid_slaves():
-            if int(widget.grid_info()["row"]) > 0:  # Assume row 0 is the sorting controls
+            if int(widget.grid_info()["row"]) > 0:
                 widget.grid_forget()
 
-        # Fetch passwords starting from the first row as there are no headers
         passwords = [
             (row[0], row[1], decrypt_password(row[2], self.master_password, row[3]), row[4] or "")
-            for row in sheet.iter_rows(min_row=1, values_only=True)  # Start from the first row
+            for row in sheet.iter_rows(min_row=1, values_only=True)
         ]
 
         if sort_by:
@@ -139,31 +129,21 @@ class PasswordManagerGUI:
             passwords.sort(key=lambda x: x[sort_index], reverse=(sort_order == 'descending'))
 
         # Display all passwords
-        for i, (site, username, decrypted_password, notes) in enumerate(passwords,
-                                                                        start=1):  # Start at 1 for the first data row
-            tk.Label(window, text=site, bg='#333333', fg='white').grid(row=i, column=0, padx=10, pady=5, sticky='w')
-            tk.Label(window, text=username, bg='#333333', fg='white').grid(row=i, column=1, padx=10, pady=5, sticky='w')
-            tk.Label(window, text=decrypted_password, bg='#333333', fg='white').grid(row=i, column=2, padx=10, pady=5,
-                                                                                     sticky='w')
-            tk.Label(window, text=notes, bg='#333333', fg='white').grid(row=i, column=3, padx=10, pady=5, sticky='w')
+        for i, (site, username, decrypted_password, notes) in enumerate(passwords, start=1):
+            tk.Label(window, text=site, fg='black').grid(row=i, column=0, padx=10, pady=5, sticky='w')
+            tk.Label(window, text=username, fg='black').grid(row=i, column=1, padx=10, pady=5, sticky='w')
+            tk.Label(window, text=decrypted_password, fg='black').grid(row=i, column=2, padx=10, pady=5, sticky='w')
+            tk.Label(window, text=notes, fg='black').grid(row=i, column=3, padx=10, pady=5, sticky='w')
 
             delete_button = tk.Button(window, text="X", command=lambda rn=i: self.confirm_delete(sheet, window, rn))
             delete_button.grid(row=i, column=4, padx=10, pady=5, sticky='w')
 
-
     def confirm_delete(self, sheet, window, excel_row):
         confirm = tk.messagebox.askyesno("Confirm Deleting", "This will delete the credentials, proceed?")
         if confirm:
-            # Delete the row from the sheet
             sheet.delete_rows(excel_row)
-
-            # Save the workbook
             sheet.parent.save("passwords.xlsx")
-
-            # Refresh the displayed passwords
             self.fill_passwords(sheet, window)
-
-
 
     def apply_sort(self, sheet, window, sort_by, sort_order):
         self.fill_passwords(sheet, window, sort_by=sort_by, sort_order=sort_order)
