@@ -15,7 +15,7 @@ def on_login(master_password, root):
 def main():
     ctk.set_appearance_mode("light")
     root = ctk.CTk()
-    root.title("Password Manager by Aplik")
+    root.title("Password Manager")
     root.withdraw()
     login_window = LoginWindow(root, lambda mp: on_login(mp, root))
 

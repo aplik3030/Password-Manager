@@ -62,7 +62,7 @@ class PasswordManagerGUI:
         self.master_password = master_password
         self.key = derive_key(master_password)
         ctk.set_appearance_mode("light")
-        self.root.title("Password Manager by Aplik v1.0")
+        self.root.title("Password Manager")
         self.style = ttk.Style()
         self.create_widgets()
 
