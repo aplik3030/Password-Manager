@@ -4,10 +4,11 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet, InvalidToken
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 import os
+from tkinter import messagebox
+
 
 def hash_password(password):
     salt = os.urandom(16)
-    #print(f"Generated salt: {salt.hex()}")
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -15,21 +16,16 @@ def hash_password(password):
         iterations=100000,
         backend=default_backend()
     )
-    key = kdf.derive(password.encode())  # Derive the key
-    #print(f"Derived key: {key.hex()}")  # Print the derived key in hexadecimal
-    storage = urlsafe_b64encode(salt + key).decode()  # Store salt and key together
-    #print(f"Stored (salt + key) encoded: {storage}")  # Print the base64 encoded salt + key
+    key = kdf.derive(password.encode())
+    storage = urlsafe_b64encode(salt + key).decode()
     return storage
 
-# Function to verify a provided password against a stored hash
+
 def verify_password(stored_password, provided_password):
     decoded = urlsafe_b64decode(stored_password.encode())
-    #print(f"Decoded stored value (salt + key): {decoded.hex()}")  # Print the decoded stored value in hexadecimal
 
-    salt = decoded[:16]  # Extract salt
-    key = decoded[16:]  # Extract key
-    #print(f"Extracted salt: {salt.hex()}")  # Print the extracted salt in hexadecimal
-    #print(f"Extracted key: {key.hex()}")  # Print the extracted key in hexadecimal
+    salt = decoded[:16]
+    key = decoded[16:]
 
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -41,38 +37,33 @@ def verify_password(stored_password, provided_password):
 
     try:
         kdf.verify(provided_password.encode(), key)
-        print("Provided password is correct.")  # Print success message
         return True
     except Exception:
-        print("Provided password is incorrect.")  # Print failure message
         return False
 
-def setup_master_password():
-    master_password = input("Set your master password: ")
+
+def setup_master_password(master_password):
     hashed_master_password = hash_password(master_password)
-    # Save the hashed master password to a file
     with open("master_password.txt", "w") as file:
         file.write(hashed_master_password)
-    print("Master password set and securely stored.")
+    messagebox.showinfo("Setup Complete", "Master password has been successfully set.")
+
 
 def check_master_password(master_password):
     try:
         with open("master_password.txt", "r") as file:
             stored_hash = file.read()
-        if verify_password(stored_hash, master_password):
+        is_correct = verify_password(stored_hash, master_password)
+        if is_correct:
             print("Provided password is correct.")
-            return True, False  # Master password is correct, not a new setup
+            return True, False
         else:
             print("Provided password is incorrect.")
-            return False, False  # Access denied
+            return False, False
     except FileNotFoundError:
         print("No master password found. Setting up a new master password.")
-        hashed_master_password = hash_password(master_password)
-        with open("master_password.txt", "w") as file:
-            file.write(hashed_master_password)
-        print("Master password set and securely stored.")
-        return True, True  # New setup, master password is set
-
+        setup_master_password(master_password)
+        return True, True
 
 
 def derive_key(master_password, salt=None):
@@ -99,12 +90,11 @@ def encrypt_password(user_password, master_password):
 
 def decrypt_password(encrypted_password, master_password, salt):
     try:
-        salt_bytes = bytes.fromhex(salt)  # Ensure salt is properly converted
+        salt_bytes = bytes.fromhex(salt)
         key, _ = derive_key(master_password, salt=salt_bytes)
         f = Fernet(key)
         decrypted_password = f.decrypt(encrypted_password).decode()
         return decrypted_password
     except ValueError as e:
         print(f"Error converting salt from hex: {e}")
-        # Handle error appropriately
 

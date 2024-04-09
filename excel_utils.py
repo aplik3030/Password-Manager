@@ -12,6 +12,5 @@ def add_password_to_excel(site, username, encrypted_password, salt, notes, filen
     else:
         sheet = wb.active
 
-    # Save encrypted password and hex-encoded salt
     sheet.append([site, username, encrypted_password, salt, notes])
     wb.save(filename)

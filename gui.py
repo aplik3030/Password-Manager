@@ -1,14 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import customtkinter as ctk
-from ttkthemes import ThemedTk
 from crypto_utils import derive_key, encrypt_password, decrypt_password
 from excel_utils import add_password_to_excel
 from openpyxl import load_workbook
-import pyotp
-import qrcode
-import os
-from PIL import Image, ImageTk
 
 
 class LoginWindow:
@@ -19,32 +14,21 @@ class LoginWindow:
 
     def setup_window(self):
         self.top = ctk.CTkToplevel(self.parent)
-        self.top.geometry("600x400")
+        self.top.geometry("450x300")
         self.top.title("Login Page")
         self.top.resizable(False, False)
 
-        bG_IMAGE_PATH = 'sad.jpg'
-        bg_image = Image.open(bG_IMAGE_PATH)
-        bg_photo = ImageTk.PhotoImage(bg_image)
-
-        bg_label = tk.Label(self.top, image=bg_photo)
-        bg_label.image = bg_photo
-        bg_label.place(x=0, y=0, width=600, height=400)
-
         login_frame_width = self.top.winfo_width()
         login_frame_height = self.top.winfo_height()
-        login_frame = ctk.CTkFrame(self.top, width=login_frame_width, height=login_frame_height)
-        login_frame.place(x=200, y=100)
+        login_frame = ctk.CTkFrame(self.top, width=login_frame_width, height=login_frame_height, corner_radius=10)
+        login_frame.place(x=125, y=50)
 
-        # Welcome label
         welcome_label = ctk.CTkLabel(login_frame, text="Welcome Back!")
         welcome_label.pack(pady=12)
 
-        # Password Entry
         password_entry = ctk.CTkEntry(login_frame, placeholder_text="Password:", show="*")
         password_entry.pack(pady=10, padx=20, fill='x')
 
-        # Login button
         login_button = ctk.CTkButton(login_frame, text="Login", command=lambda: self.on_login(password_entry.get()))
         login_button.pack(pady=20)
 
@@ -69,20 +53,30 @@ class PasswordManagerGUI:
     def create_widgets(self):
         labels_texts = ["Site Name:", "Username:", "Password:", "Notes:"]
         self.entries = []
+        self.vars = {text: tk.StringVar() for text in labels_texts}
+
         for i, text in enumerate(labels_texts):
             label = ttk.Label(self.root, text=text)
             label.grid(column=0, row=i, padx=10, pady=10, sticky="W")
-            entry = ttk.Entry(self.root)
+
+            entry = ttk.Entry(self.root, textvariable=self.vars[text])
+            self.vars[text].trace("w", lambda name, index, mode, sv=self.vars[text], field=text: self.limit_input(sv, field))
             entry.grid(column=1, row=i, padx=10, pady=10, sticky="EW")
             self.entries.append(entry)
 
         add_button = ctk.CTkButton(self.root, text="Add Password", command=self.add_password)
         add_button.grid(column=0, row=4, columnspan=2, padx=10, pady=20)
 
-        add_button = ctk.CTkButton(self.root, text="View Passwords", command=self.view_passwords)
-        add_button.grid(column=0, row=5, columnspan=2, padx=10, pady=15)
+        view_button = ctk.CTkButton(self.root, text="View Passwords", command=self.view_passwords)
+        view_button.grid(column=0, row=5, columnspan=2, padx=10, pady=15)
 
         self.root.grid_columnconfigure(1, weight=1)
+
+    def limit_input(self, sv, field):
+        content = sv.get()
+        if len(content) > 30:
+            sv.set(content[:30])
+            tk.messagebox.showwarning("Warning", f"{field} cannot exceed 30 characters.")
 
     def add_password(self):
         site, username, password, notes = (entry.get() for entry in self.entries)
@@ -95,24 +89,40 @@ class PasswordManagerGUI:
         print(f"Password for {site} added successfully.")
 
     def view_passwords(self):
+        confirm = messagebox.askokcancel("Warning","All passwords will be displayed in plain text. Do you want to proceed?")
+        if not confirm:
+            return  # User canceled, do not proceed
         filename = "passwords.xlsx"
         wb = load_workbook(filename)
         sheet = wb.active
 
         new_window = tk.Toplevel(self.root)
         new_window.title("View Stored Passwords")
+        new_window.geometry("700x500")
+        new_window.resizable(False, False)
 
-        # Sorting controls inside new_window
-        sort_order = ttk.Combobox(new_window, values=["Ascending", "Descending"], state="readonly")
+        canvas = tk.Canvas(new_window)
+        v_scrollbar = tk.Scrollbar(new_window, orient="vertical", command=canvas.yview)
+        h_scrollbar = tk.Scrollbar(new_window, orient="horizontal", command=canvas.xview)
+        canvas.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+        canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        scrollable_frame = tk.Frame(canvas)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        v_scrollbar.pack(side="right", fill="y")
+        h_scrollbar.pack(side="bottom", fill="x")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        sort_order = ttk.Combobox(scrollable_frame, values=["Ascending", "Descending"], state="readonly")
         sort_order.grid(row=0, column=0, padx=10, pady=5)
         sort_order.set("Ascending")
 
-        sort_button = ctk.CTkButton(new_window, text="Sort",
-                                    command=lambda: self.fill_passwords(sheet, new_window, "Platform",
+        sort_button = ctk.CTkButton(scrollable_frame, text="Sort",
+                                    command=lambda: self.fill_passwords(sheet, scrollable_frame, "Platform",
                                                                         sort_order.get().lower()))
         sort_button.grid(row=0, column=1, padx=10, pady=5)
 
-        self.fill_passwords(sheet, new_window)
+        self.fill_passwords(sheet, scrollable_frame)
 
     def fill_passwords(self, sheet, window, sort_by=None, sort_order='ascending'):
         for widget in window.grid_slaves():
@@ -128,7 +138,6 @@ class PasswordManagerGUI:
             sort_index = ["Platform", "Username", "Notes"].index(sort_by)
             passwords.sort(key=lambda x: x[sort_index], reverse=(sort_order == 'descending'))
 
-        # Display all passwords
         for i, (site, username, decrypted_password, notes) in enumerate(passwords, start=1):
             tk.Label(window, text=site, fg='black').grid(row=i, column=0, padx=10, pady=5, sticky='w')
             tk.Label(window, text=username, fg='black').grid(row=i, column=1, padx=10, pady=5, sticky='w')
@@ -147,4 +156,3 @@ class PasswordManagerGUI:
 
     def apply_sort(self, sheet, window, sort_by, sort_order):
         self.fill_passwords(sheet, window, sort_by=sort_by, sort_order=sort_order)
-
